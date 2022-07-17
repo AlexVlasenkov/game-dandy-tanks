@@ -1,5 +1,6 @@
 import javax.swing.*;
 import java.awt.*;
+import java.util.Random;
 
 public class GameField extends JPanel {
     // Размеры окна, включая заголовок
@@ -26,6 +27,9 @@ public class GameField extends JPanel {
     private final String EARTH = "EARTH";
     private final String WATER = "WATER";
     private final String GREEN = "GREEN";
+    // Ограничения по координатам
+    private final int TOP_Y = WINDOW_HEIGHT - OBJECT_HEIGHT;
+    private final int TOP_X = WINDOW_WIDTH - OBJECT_WIDTH;
     // Массив объектов карты; поле карты представляет собой матрицу 56x9
     private String[][] objects = {
             {EARTH, BRICK, BRICK, EARTH, BRICK, EARTH, GREEN, BRICK, BRICK},
@@ -43,23 +47,79 @@ public class GameField extends JPanel {
     private void move(int direction) throws Exception {
         this.direction = direction;
 
+        if (dontCanMove()) {
+            System.out.println("Can't move!!!");
+            fire();
+            return;
+        }
+
+        for (int i = 0; i < OBJECT_WIDTH; i++) {
+            switch (direction) {
+                case UP:
+                    tankY--;
+                    break;
+                case DOWN:
+                    tankY++;
+                    break;
+                case LEFT:
+                    tankX--;
+                    break;
+                case RIGHT:
+                    tankX++;
+                    break;
+            }
+            Thread.sleep(30);
+            repaint();
+        }
+    }
+
+    void moveRandom() throws Exception {
+        Random random = new Random();
+        int direction = random.nextInt(4) + 1;
+        move(direction);
+    }
+
+    private boolean dontCanMove() {
+        return ((direction == UP && tankY == 0) ||
+                (direction == DOWN && tankY == TOP_Y) ||
+                (direction == LEFT && tankX == 0) ||
+                (direction == RIGHT && tankX == TOP_X) ||
+                (nextObject(direction).equals(BRICK))
+        );
+    }
+
+    private String nextObject(int direction) {
+        int y = tankY;
+        int x = tankX;
+
         switch (direction) {
             case UP:
-                tankY--;
+                y -= OBJECT_HEIGHT;
                 break;
             case DOWN:
-                tankY++;
+                y += OBJECT_HEIGHT;
                 break;
             case LEFT:
-                tankX--;
+                x -= OBJECT_WIDTH;
                 break;
             case RIGHT:
-                tankX++;
+                x += OBJECT_WIDTH;
                 break;
         }
 
-        Thread.sleep(30);
-        repaint();
+        return objects[y / OBJECT_HEIGHT][x / OBJECT_WIDTH];
+    }
+
+    private boolean processInterception() {
+        int y = bulletY / 64;
+        int x = bulletX / 64;
+
+        if (objects[y][x].equals(BRICK) && y < 9 && x < 9) {
+            objects[y][x] = EARTH;
+            return true;
+        }
+
+        return false;
     }
 
     // Выстрел из танка
@@ -82,19 +142,30 @@ public class GameField extends JPanel {
                     bulletX++;
                     break;
             }
+
+            if (processInterception()) {
+                destroyBullet();
+            }
+
             Thread.sleep(10);
             repaint();
         }
 
         // По мере удаления пуля исчезает
+        destroyBullet();
+    }
+
+    private void destroyBullet() {
         bulletX = -100;
+        bulletY = -100;
+        repaint();
     }
 
     // Запуск игры
     private void runTheGame() throws Exception {
 
         while (true) {
-            fire();
+            moveRandom();
         }
     }
 
@@ -130,12 +201,13 @@ public class GameField extends JPanel {
                         g.setColor(new Color(244, 233, 246));
                         break;
                     case WATER:
-                        g.setColor(new Color(021, 172, 246));
+                        g.setColor(new Color(21, 172, 246));
                         break;
                     case GREEN:
                         g.setColor(new Color(17, 82, 21, 255));
                         break;
                 }
+                // Расположение объектов на карте
                 g.fillRect(x * OBJECT_WIDTH, y * OBJECT_WIDTH, OBJECT_WIDTH, OBJECT_HEIGHT);
             }
         }
